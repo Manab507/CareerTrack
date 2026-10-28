@@ -106,3 +106,30 @@ class CompanyResponse(BaseModel):
     name: str
     location: str | None = None
     website: str | None = None
+# ==========================================
+# Interview Schemas
+# ==========================================
+
+class InterviewCreate(BaseModel):
+    interview_type: str = Field(..., max_length=50)
+    interview_date: str | None = None
+    status: str = Field("Scheduled", max_length=30)
+    result: str = Field("Pending", max_length=30)
+    notes: str | None = None
+
+
+class InterviewUpdate(BaseModel):
+    interview_date: str | None = None
+    status: str | None = Field(None, max_length=30)
+    result: str | None = Field(None, max_length=30)
+    notes: str | None = None
+
+
+class InterviewResponse(BaseModel):
+    id: int
+    application_id: int
+    interview_type: str
+    interview_date: str | None = None
+    status: str
+    result: str
+    notes: str | None = None

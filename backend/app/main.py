@@ -24,7 +24,10 @@ from .schemas import (
     ApplicationResponse, 
      ApplicationStats ,
      CompanyCreate,
-     CompanyResponse
+     CompanyResponse,
+     InterviewCreate,
+     InterviewUpdate,
+     InterviewResponse
        # ← Day 55
 )
 app = FastAPI()
@@ -687,6 +690,161 @@ def delete_company(company_id: int, admin: dict = Depends(get_current_admin)):
             raise HTTPException(404, "Company not found")
         
         return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+# ==========================================
+# POST /applications/{id}/interviews — Add Interview
+# ==========================================
+
+@app.post("/applications/{application_id}/interviews", status_code=201)
+def add_interview(
+    application_id: int,
+    data: InterviewCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        # Step 1: Check koro application ta user er ki na
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT id FROM applications WHERE id = %s AND user_id = %s",
+                (application_id, current_user["id"]),
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(404, "Application not found")
+
+        # Step 2: Interview insert koro
+        with get_cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO interviews 
+                    (application_id, interview_type, interview_date, status, result, notes)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, application_id, interview_type, interview_date, status, result, notes
+                """,
+                (
+                    application_id, data.interview_type, data.interview_date,
+                    data.status, data.result, data.notes
+                ),
+            )
+            row = cur.fetchone()
+
+        return {
+            "id": row[0], "application_id": row[1],
+            "interview_type": row[2],
+            "interview_date": str(row[3]) if row[3] else None,
+            "status": row[4], "result": row[5], "notes": row[6],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+# ==========================================
+# GET /applications/{id}/interviews — List
+# ==========================================
+
+@app.get("/applications/{application_id}/interviews")
+def get_interviews(
+    application_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        # Check application ownership
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT id FROM applications WHERE id = %s AND user_id = %s",
+                (application_id, current_user["id"]),
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(404, "Application not found")
+
+        # Fetch interviews
+        with get_cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, application_id, interview_type, interview_date, status, result, notes
+                FROM interviews
+                WHERE application_id = %s
+                ORDER BY id
+                """,
+                (application_id,),
+            )
+            rows = cur.fetchall()
+
+        return [
+            {
+                "id": r[0], "application_id": r[1],
+                "interview_type": r[2],
+                "interview_date": str(r[3]) if r[3] else None,
+                "status": r[4], "result": r[5], "notes": r[6],
+            }
+            for r in rows
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+# ==========================================
+# PUT /interviews/{id} — Update Interview
+# ==========================================
+
+@app.put("/interviews/{interview_id}")
+def update_interview(
+    interview_id: int,
+    data: InterviewUpdate,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        # Check ownership (interview -> application -> user)
+        with get_cursor() as cur:
+            cur.execute(
+                """
+                SELECT i.id FROM interviews i
+                INNER JOIN applications a ON i.application_id = a.id
+                WHERE i.id = %s AND a.user_id = %s
+                """,
+                (interview_id, current_user["id"]),
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(404, "Interview not found")
+
+        # Dynamic Update
+        updates = []
+        values = []
+        if data.interview_date is not None:
+            updates.append("interview_date = %s")
+            values.append(data.interview_date)
+        if data.status is not None:
+            updates.append("status = %s")
+            values.append(data.status)
+        if data.result is not None:
+            updates.append("result = %s")
+            values.append(data.result)
+        if data.notes is not None:
+            updates.append("notes = %s")
+            values.append(data.notes)
+
+        if not updates:
+            raise HTTPException(400, "No fields to update")
+
+        values.append(interview_id)
+        query = f"""
+            UPDATE interviews SET {', '.join(updates)}
+            WHERE id = %s
+            RETURNING id, application_id, interview_type, interview_date, status, result, notes
+        """
+
+        with get_cursor() as cur:
+            cur.execute(query, values)
+            row = cur.fetchone()
+
+        return {
+            "id": row[0], "application_id": row[1],
+            "interview_type": row[2],
+            "interview_date": str(row[3]) if row[3] else None,
+            "status": row[4], "result": row[5], "notes": row[6],
+        }
     except HTTPException:
         raise
     except Exception as e:
