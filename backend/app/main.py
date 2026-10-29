@@ -27,7 +27,9 @@ from .schemas import (
      CompanyResponse,
      InterviewCreate,
      InterviewUpdate,
-     InterviewResponse
+     InterviewResponse,
+     UserDashboardStats,
+     AdminDashboardStats
        # ← Day 55
 )
 app = FastAPI()
@@ -849,4 +851,61 @@ def update_interview(
         raise
     except Exception as e:
         raise HTTPException(500, detail=str(e))
+# ==========================================
+# GET /dashboard/user — User's Unified Stats
+# ==========================================
+
+@app.get("/dashboard/user", response_model=UserDashboardStats)
+def get_user_dashboard(current_user: dict = Depends(get_current_user)):
+    try:
+        with get_cursor() as cur:
+            # Application ar Interview count ek sathe
+            cur.execute("""
+                SELECT 
+                    (SELECT COUNT(*) FROM applications WHERE user_id = %s) AS total_apps,
+                    (SELECT COUNT(*) FROM interviews i 
+                     INNER JOIN applications a ON i.application_id = a.id 
+                     WHERE a.user_id = %s AND i.status = 'Scheduled') AS interviews,
+                    (SELECT COUNT(*) FROM applications WHERE user_id = %s AND status = 'Offer') AS offers,
+                    (SELECT COUNT(*) FROM applications WHERE user_id = %s AND status = 'Rejected') AS rejections
+            """, (current_user["id"], current_user["id"], current_user["id"], current_user["id"]))
+            
+            row = cur.fetchone()
+            
+        return {
+            "total_applications": row[0],
+            "interview_scheduled": row[1],
+            "offers_received": row[2],
+            "rejections": row[3]
+        }
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+# ==========================================
+# GET /dashboard/admin — System-wide Stats
+# ==========================================
+
+@app.get("/dashboard/admin", response_model=AdminDashboardStats)
+def get_admin_dashboard(admin: dict = Depends(get_current_admin)):
+    try:
+        with get_cursor() as cur:
+            # Puro system er count (Admin only)
+            cur.execute("""
+                SELECT 
+                    (SELECT COUNT(*) FROM users) AS users,
+                    (SELECT COUNT(*) FROM companies) AS companies,
+                    (SELECT COUNT(*) FROM applications) AS apps,
+                    (SELECT COUNT(*) FROM interviews) AS interviews
+            """)
+            
+            row = cur.fetchone()
+            
+        return {
+            "total_users": row[0],
+            "total_companies": row[1],
+            "total_applications": row[2],
+            "total_interviews": row[3]
+        }
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
 
