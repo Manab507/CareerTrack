@@ -133,3 +133,19 @@ class InterviewResponse(BaseModel):
     status: str
     result: str
     notes: str | None = None
+# ==========================================
+# Dashboard Schemas (Day 59)
+# ==========================================
+
+class UserDashboardStats(BaseModel):
+    total_applications: int
+    interview_scheduled: int
+    offers_received: int
+    rejections: int
+
+
+class AdminDashboardStats(BaseModel):
+    total_users: int
+    total_companies: int
+    total_applications: int
+    total_interviews: int
