@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Query
+from fastapi import FastAPI, HTTPException, Depends, status, Query,Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime, timedelta, timezone
@@ -33,6 +33,19 @@ from .schemas import (
        # ← Day 55
 )
 app = FastAPI()
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Log the error (pore logging add korbo)
+    print(f"❌ Global Error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "message": "Internal Server Error. Amra eta fix korchi!",
+            "detail": str(exc)
+        }
+    )
+from fastapi.responses import JSONResponse
 
 
 # ==========================================
@@ -424,10 +437,11 @@ def get_application_stats(current_user: dict = Depends(get_current_user)):
 def get_my_applications(
     status_filter: str | None = Query(None, alias="status"),
     company_id: int | None = None,
+    company_name: str | None = None, # <-- Notun filter
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Nijer applications list. Filter: ?status=Applied ba ?company_id=1
+    Nijer applications list. Filter: ?status=Applied, ?company_id=1, ?company_name=Google
     """
     try:
         query = """
@@ -449,6 +463,10 @@ def get_my_applications(
             query += " AND a.company_id = %s"
             params.append(company_id)
 
+        if company_name: # <-- Notun Filter logic
+            query += " AND c.name ILIKE %s"
+            params.append(f"%{company_name}%") # ILIKE mane case-insensitive search
+
         query += " ORDER BY a.application_date DESC"
 
         with get_cursor() as cur:
@@ -468,7 +486,6 @@ def get_my_applications(
         ]
     except Exception as e:
         raise HTTPException(500, detail=str(e))
-
 @app.get("/applications/{application_id}")
 def get_application(
     application_id: int,
