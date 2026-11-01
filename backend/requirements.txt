@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic[email]
+bcrypt
+PyJWT
+psycopg[pool]==3.1.18

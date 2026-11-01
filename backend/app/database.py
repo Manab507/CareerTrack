@@ -1,49 +1,42 @@
 """
-CareerTrack — Database Connection (psycopg v3)
+CareerTrack — Database Connection with Pooling
 """
 import psycopg
+import atexit
+from psycopg_pool import ConnectionPool
 from contextlib import contextmanager
 from .config import settings
 
+# 1. Connection Pool toiri koro
+# min_size=2: Surute 2 ta connection ready thakbe
+# max_size=10: Maximum 10 ta connection ekhone khulte parbe
+pool = ConnectionPool(
+    conninfo=f"dbname={settings.DB_NAME} user={settings.DB_USER} password={settings.DB_PASSWORD} host={settings.DB_HOST} port={settings.DB_PORT}",
+    min_size=2,
+    max_size=10,
+    open=True
+)
 
-def get_connection():
-    """Get a new database connection"""
-    return psycopg.connect(**settings.db_config())
+# 2. Program shesh howar age pool ta jeno thik moto close hoy, seta nishchit koro
+atexit.register(pool.close)
 
 
 @contextmanager
 def get_cursor():
     """
-    Context manager for cursor.
-    Auto commit/rollback/close.
-    
-    Usage:
-        with get_cursor() as cur:
-            cur.execute("SELECT ...")
-            rows = cur.fetchall()
+    Pool theke connection niye cursor dey.
+    Kaj sesh hole connection abar pool e ferot jay.
     """
-    conn = get_connection()
-    try:
-        cur = conn.cursor()
-        try:
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
             yield cur
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cur.close()
-    finally:
-        conn.close()
 
 
 def test_connection() -> bool:
-    """Test DB connection"""
     try:
         with get_cursor() as cur:
             cur.execute("SELECT version()")
-            version = cur.fetchone()[0]
-            print(f"✅ Connected: {version[:50]}...")
+            print(f"✅ Connected to: {cur.fetchone()[0][:50]}...")
             return True
     except psycopg.Error as e:
         print(f"❌ Connection failed: {e}")
