@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query,Request
 from ..database import get_cursor
 from ..schemas import (
     ApplicationCreate, ApplicationUpdate, CompanyCreate, CompanyResponse, 
     InterviewCreate, InterviewUpdate
 )
 from ..dependencies import get_current_user, get_current_admin
+from ..limiter import limiter
 
 router = APIRouter(tags=["Applications, Companies & Interviews"])
 
@@ -12,8 +13,9 @@ router = APIRouter(tags=["Applications, Companies & Interviews"])
 # APPLICATIONS
 # ==========================================
 
-@router.post("/applications", status_code=201)
-def create_application(data: ApplicationCreate, current_user: dict = Depends(get_current_user)):
+@router.post("/")
+@limiter.limit("10/minute") # 1 minute e max 10 ta application
+def create_application(request: Request, data: ApplicationCreate, current_user: dict = Depends(get_current_user)):
     try:
         with get_cursor() as cur:
             cur.execute("SELECT id FROM companies WHERE id = %s", (data.company_id,))
