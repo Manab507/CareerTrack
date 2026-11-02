@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends,Request
 from ..database import get_cursor
 from ..schemas import LoginRequest, RefreshRequest
 from ..security import verify_password, create_access_token, create_refresh_token, hash_token, decode_access_token
 from ..dependencies import get_current_user
+from ..limiter import limiter
 
 router = APIRouter(tags=["Authentication"])
-
 @router.post("/login")
-def login_user(user: LoginRequest):
+@limiter.limit("5/minute")  # <-- Notun line (1 minute e max 5 bar)
+def login_user(request: Request, user: LoginRequest): # <-- Request parameter add korte hobe
     try:
+        # ... tomar purono login code ...
         with get_cursor() as cur:
             cur.execute("SELECT id, name, email, password_hash FROM users WHERE email = %s", (user.email,))
             found_user = cur.fetchone()
