@@ -1,30 +1,30 @@
-"""
-CareerTrack — Configuration
-"""
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-
 class Settings:
     # Database
-    DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_PORT = int(os.getenv("DB_PORT", "5432"))
-    DB_NAME = os.getenv("DB_NAME", "careertrack")
-    DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-    
+    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_PORT: str = os.getenv("DB_PORT", "5432")
+    DB_NAME: str = os.getenv("DB_NAME", "careertrack")
+    DB_USER: str = os.getenv("DB_USER", "postgres")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+
     # JWT
-    JWT_SECRET_KEY = os.getenv(
-        "JWT_SECRET_KEY",
-        "careertrack-local-practice-secret-key-change-in-production-min-32"
-    )
-    JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
-        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "60")
-    )
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "fallback_secret")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
+    # App
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
+    @property
+    def ALLOWED_ORIGINS(self) -> list[str]:
+        origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
+        return [origin.strip() for origin in origins.split(",")]
+
     @classmethod
     def db_config(cls) -> dict:
         return {
@@ -34,6 +34,5 @@ class Settings:
             "user": cls.DB_USER,
             "password": cls.DB_PASSWORD,
         }
-
 
 settings = Settings()
