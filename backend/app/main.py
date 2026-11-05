@@ -8,6 +8,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from .limiter import limiter
 from fastapi.middleware.cors import CORSMiddleware
+from .config import settings
 
 app = FastAPI(
     title="CareerTrack API",
@@ -17,20 +18,12 @@ app = FastAPI(
 # ==========================================
 # CORS Setup
 # ==========================================
-origins = [
-    "http://localhost:3000",    # React (Vite/CRA)
-    "http://localhost:5173",    # Vite default port
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    # pore production e tomar live domain ekhane add korbe
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Kon kon URL theke ashte parbe
-    allow_credentials=True,      # Cookies/Token pathate parbe
-    allow_methods=["*"],         # GET, POST, PUT, DELETE sob allow
-    allow_headers=["*"],         # Sob header allow
+    allow_origins=settings.ALLOWED_ORIGINS, # <-- Ekhane settings theke ashbe
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Rate Limiter Setup
