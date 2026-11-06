@@ -6,3 +6,5 @@ bcrypt
 PyJWT
 psycopg[pool]==3.1.18
 slowapi
+pytest
+httpx
